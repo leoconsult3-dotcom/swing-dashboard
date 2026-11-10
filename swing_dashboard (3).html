@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swing Trading Dashboard Pro</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3;
+    --muted: #8b949e; --blue: #58a6ff; --green: #3fb950; --red: #f85149;
+    --orange: #f0883e; --purple: #a371f7; --cyan: #39c5cf;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg); color: var(--text); padding: 18px; line-height: 1.5; min-height: 100vh;
+  }
+  .topbar {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+    margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border);
+  }
+  .topbar h1 { font-size: 1.3rem; font-weight: 600; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  select, input, button {
+    background: var(--card); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 11px; border-radius: 8px; font-size: 0.87rem;
+  }
+  select { min-width: 150px; cursor: pointer; }
+  input[type="password"], input[type="text"] { min-width: 170px; }
+  button { background: #238636; border-color: #238636; cursor: pointer; font-weight: 600; }
+  button:hover { background: #2ea043; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status { font-size: 0.8rem; color: var(--muted); }
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+  }
+  .card h3 {
+    font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--muted); margin-bottom: 4px;
+  }
+  .card .value { font-size: 1.25rem; font-weight: 600; }
+  .card .sub { color: var(--muted); font-size: 0.76rem; margin-top: 2px; }
+  .bias-pill {
+    display: inline-block; padding: 3px 10px; border-radius: 16px; font-weight: 600; font-size: 0.86rem;
+  }
+  .bias-long { background: #3fb95022; color: var(--green); border: 1px solid #3fb95055; }
+  .bias-short { background: #f8514922; color: var(--red); border: 1px solid #f8514955; }
+  .bias-neutral { background: #f0883e22; color: var(--orange); border: 1px solid #f0883e55; }
+  .section {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 16px;
+  }
+  .section h2 {
+    font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--muted); margin-bottom: 10px;
+  }
+  .chart-wrap {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; margin-bottom: 16px; height: 460px; position: relative;
+  }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+  th, td { padding: 6px 7px; text-align: left; border-bottom: 1px solid #21262d; }
+  th { color: var(--muted); font-weight: 500; font-size: 0.68rem; text-transform: uppercase; }
+  .liq-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px;
+  }
+  .liq-item label { display: block; font-size: 0.65rem; text-transform: uppercase; color: var(--muted); }
+  .liq-item .val { font-size: 1.05rem; font-weight: 600; }
+  .trade-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 8px;
+  }
+  .trade-item label { display: block; font-size: 0.65rem; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+  .trade-item .val { font-size: 1.15rem; font-weight: 600; }
+  .entry { color: var(--blue); } .stop { color: var(--red); }
+  .target { color: var(--green); } .rr { color: var(--orange); }
+  .ai-box {
+    background: linear-gradient(135deg, #161b22 0%, #1a2332 100%);
+    border: 1px solid #30363d; border-left: 3px solid var(--purple);
+    border-radius: 8px; padding: 12px 14px; margin-top: 10px; font-size: 0.9rem; color: #c9d1d9;
+  }
+  .news-links a {
+    display: inline-block; margin: 4px 6px 4px 0; padding: 5px 10px;
+    background: #21262d; border-radius: 6px; color: var(--blue); text-decoration: none; font-size: 0.82rem;
+  }
+  .news-links a:hover { background: #30363d; }
+  .notes ul { padding-left: 18px; color: #c9d1d9; }
+  .notes li { margin-bottom: 4px; }
+  .disclaimer {
+    margin-top: 20px; padding: 10px; background: #21262d; border-radius: 8px;
+    font-size: 0.74rem; color: var(--muted); text-align: center;
+  }
+  .loading { opacity: 0.4; pointer-events: none; }
+  .error {
+    background: #f8514922; border: 1px solid #f8514955; color: var(--red);
+    padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; display: none;
+  }
+  .tag {
+    display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem;
+    background: #21262d; color: var(--muted); margin-right: 4px;
+  }
+  .legend-hint {
+    font-size: 0.75rem; color: var(--muted); margin-top: 6px;
+  }
+  .legend-hint span { margin-right: 12px; }
+
+  /* Loading & Error UX */
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid #30363d; border-top-color: #58a6ff;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-overlay {
+    position: absolute; inset: 0; background: rgba(13,17,23,0.65);
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; z-index: 10; font-size: 0.95rem; color: var(--text);
+  }
+  .loading-overlay.hidden { display: none; }
+  .error {
+    background: #f8514922; border: 1px solid #f8514955; color: #ff7b72;
+    padding: 12px 16px; border-radius: 8px; margin-bottom: 14px;
+    display: none; align-items: flex-start; gap: 12px;
+  }
+  .error.visible { display: flex; }
+  .error .err-body { flex: 1; }
+  .error .err-title { font-weight: 600; margin-bottom: 4px; }
+  .error .err-detail { font-size: 0.85rem; opacity: 0.9; }
+  .error button {
+    background: #21262d; border: 1px solid #30363d; color: var(--text);
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  .error button:hover { background: #30363d; }
+  .status-ok { color: var(--green); }
+  .status-err { color: var(--red); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <h1>Swing Trading Dashboard Pro</h1>
+      <div class="status" id="timestamp">Ready — select symbol &amp; analyze</div>
+    </div>
+    <div class="controls">
+      <select id="symbolSelect">
+        <optgroup label="US Indices / ETFs">
+          <option value="SPY">SPY — S&amp;P 500</option>
+          <option value="QQQ">QQQ — Nasdaq 100</option>
+          <option value="IWM">IWM — Russell 2000</option>
+          <option value="DIA">DIA — Dow</option>
+          <option value="XLF">XLF — Financials</option>
+          <option value="XLE">XLE — Energy</option>
+          <option value="XLK">XLK — Tech</option>
+          <option value="GLD">GLD — Gold</option>
+          <option value="SLV">SLV — Silver</option>
+          <option value="TLT">TLT — Bonds</option>
+        </optgroup>
+        <optgroup label="Mega Cap">
+          <option value="AAPL">AAPL</option><option value="MSFT">MSFT</option>
+          <option value="NVDA">NVDA</option><option value="GOOGL">GOOGL</option>
+          <option value="AMZN">AMZN</option><option value="META">META</option>
+          <option value="TSLA">TSLA</option><option value="AMD">AMD</option>
+          <option value="AVGO">AVGO</option>
+        </optgroup>
+        <optgroup label="Other Stocks">
+          <option value="JPM">JPM</option><option value="V">V</option>
+          <option value="BAC">BAC</option><option value="XOM">XOM</option>
+          <option value="COST">COST</option><option value="NFLX">NFLX</option>
+          <option value="BA">BA</option><option value="GS">GS</option>
+        </optgroup>
+        <optgroup label="Crypto">
+          <option value="BTC/USD">BTC/USD</option><option value="ETH/USD">ETH/USD</option>
+          <option value="SOL/USD">SOL/USD</option><option value="XRP/USD">XRP/USD</option>
+        </optgroup>
+        <optgroup label="Forex &amp; Metals">
+          <option value="EUR/USD">EUR/USD</option><option value="GBP/USD">GBP/USD</option>
+          <option value="USD/JPY">USD/JPY</option><option value="XAU/USD">XAU/USD Gold</option>
+          <option value="XAG/USD">XAG/USD Silver</option>
+        </optgroup>
+      </select>
+      <input type="text" id="customSymbol" placeholder="Custom symbol" style="min-width:120px" />
+      <input type="password" id="apiKey" placeholder="Twelve Data API key" />
+      <button id="runBtn" onclick="runAnalysis()">Analyze</button>
+    </div>
+  </div>
+
+  <div class="error" id="errorBox">
+    <div class="err-body">
+      <div class="err-title" id="errTitle">Something went wrong</div>
+      <div class="err-detail" id="errDetail"></div>
+    </div>
+    <button onclick="runAnalysis()">Retry</button>
+  </div>
+
+  <div id="dashboard" class="loading">
+    <div class="grid">
+      <div class="card"><h3>Last Price</h3><div class="value" id="price">—</div><div class="sub" id="priceSub">—</div></div>
+      <div class="card"><h3>SMA 200</h3><div class="value" id="sma">—</div><div class="sub" id="smaSub">—</div></div>
+      <div class="card"><h3>Daily RSI</h3><div class="value" id="rsiD">—</div><div class="sub" id="rsiDSub">—</div></div>
+      <div class="card"><h3>Weekly RSI</h3><div class="value" id="rsiW">—</div><div class="sub">HTF momentum</div></div>
+      <div class="card"><h3>HTF Bias</h3><div class="value"><span class="bias-pill bias-neutral" id="bias">—</span></div><div class="sub">SMA + Weekly RSI</div></div>
+    </div>
+
+    <div class="section">
+      <h2>Liquidity Areas — PDH / PDL / Classic Pivots</h2>
+      <div class="liq-grid">
+        <div class="liq-item"><label>PDH</label><div class="val" id="pdh">—</div></div>
+        <div class="liq-item"><label>PDL</label><div class="val" id="pdl">—</div></div>
+        <div class="liq-item"><label>Pivot</label><div class="val" id="pivot">—</div></div>
+        <div class="liq-item"><label>R1</label><div class="val" id="r1">—</div></div>
+        <div class="liq-item"><label>R2</label><div class="val" id="r2">—</div></div>
+        <div class="liq-item"><label>S1</label><div class="val" id="s1">—</div></div>
+        <div class="liq-item"><label>S2</label><div class="val" id="s2">—</div></div>
+        <div class="liq-item"><label>Nearest</label><div class="val" id="nearestLiq" style="color:var(--cyan)">—</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>AI Swing Idea (also plotted on chart)</h2>
+      <div id="tradeDirection" style="font-size:1.05rem;font-weight:600;margin-bottom:6px;">—</div>
+      <div class="trade-grid">
+        <div class="trade-item"><label>Entry Zone</label><div class="val entry" id="entryZone">—</div></div>
+        <div class="trade-item"><label>Stop / Invalidation</label><div class="val stop" id="stopLevel">—</div></div>
+        <div class="trade-item"><label>Target 1</label><div class="val target" id="target1">—</div></div>
+        <div class="trade-item"><label>Target 2</label><div class="val target" id="target2">—</div></div>
+        <div class="trade-item"><label>Risk : Reward</label><div class="val rr" id="rrRatio">—</div></div>
+      </div>
+      <div class="ai-box" id="aiIdea">Select a symbol and click Analyze.</div>
+      <div class="legend-hint">
+        <span style="color:#58a6ff">━━ Entry</span>
+        <span style="color:#f85149">━━ Stop</span>
+        <span style="color:#3fb950">━━ Target</span>
+        <span style="color:#8b949e">··· PDH/PDL/Pivot</span>
+      </div>
+    </div>
+
+    <div class="chart-wrap" style="position:relative">
+      <div class="loading-overlay hidden" id="chartLoading">
+        <span class="spinner"></span> Fetching market data…
+      </div>
+      <canvas id="mainChart"></canvas>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <h3 style="margin-bottom:8px">Recent ZigZag Swings</h3>
+        <table><thead><tr><th>Date</th><th>Type</th><th>Price</th></tr></thead><tbody id="pivotBody"></tbody></table>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:8px">Fibonacci Levels</h3>
+        <table><thead><tr><th>Level</th><th>Price</th><th></th></tr></thead><tbody id="fibBody"></tbody></table>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>News · Analysis · Trader Opinions</h2>
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:10px">Quick links — open in new tabs.</p>
+      <div class="news-links" id="newsLinks"></div>
+      <div style="margin-top:12px;font-size:0.82rem;color:var(--muted)">
+        <span class="tag">Tip</span> X search: <code id="xQuery" style="color:var(--blue)">$</code>
+      </div>
+    </div>
+
+    <div class="section notes">
+      <h2>Structure Notes</h2>
+      <ul id="notesList"><li>Select a symbol and click Analyze.</li></ul>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Educational tool only. Levels and ideas are heuristic. Not financial advice. Data via Twelve Data.
+  </div>
+
+<script>
+const BASE = "https://api.twelvedata.com";
+let chart = null;
+
+const savedKey = localStorage.getItem("td_api_key");
+if (savedKey) document.getElementById("apiKey").value = savedKey;
+document.getElementById("apiKey").addEventListener("change", e => {
+  localStorage.setItem("td_api_key", e.target.value.trim());
+});
+
+async function tdFetch(endpoint, params) {
+  const key = document.getElementById("apiKey").value.trim();
+  if (!key) throw new Error("Please enter your Twelve Data API key");
+  params.apikey = key;
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`${BASE}/${endpoint}?${qs}`);
+  const data = await res.json();
+  if (data.status === "error" || data.code) throw new Error(data.message || JSON.stringify(data));
+  return data;
+}
+
+function zigzag(highs, lows, closes, dates, threshold = 0.025) {
+  const pivots = [];
+  let lastPrice = closes[0], lastIdx = 0, trend = 0;
+  for (let i = 1; i < closes.length; i++) {
+    const up = (highs[i] - lastPrice) / lastPrice;
+    const dn = (lastPrice - lows[i]) / lastPrice;
+    if (trend >= 0) {
+      if (up >= threshold) { lastPrice = highs[i]; lastIdx = i; trend = 1; }
+      else if (dn >= threshold) {
+        pivots.push({ date: dates[lastIdx], price: lastPrice, type: "H" });
+        lastPrice = lows[i]; lastIdx = i; trend = -1;
+      }
+    } else {
+      if (dn >= threshold) { lastPrice = lows[i]; lastIdx = i; trend = -1; }
+      else if (up >= threshold) {
+        pivots.push({ date: dates[lastIdx], price: lastPrice, type: "L" });
+        lastPrice = highs[i]; lastIdx = i; trend = 1;
+      }
+    }
+  }
+  if (trend === 1) pivots.push({ date: dates[lastIdx], price: lastPrice, type: "H" });
+  else if (trend === -1) pivots.push({ date: dates[lastIdx], price: lastPrice, type: "L" });
+  return pivots;
+}
+
+function showError(title, detail) {
+  const box = document.getElementById("errorBox");
+  document.getElementById("errTitle").textContent = title || "Something went wrong";
+  document.getElementById("errDetail").textContent = detail || "";
+  box.classList.add("visible");
+}
+function clearError() {
+  document.getElementById("errorBox").classList.remove("visible");
+}
+function setLoading(isLoading) {
+  const btn = document.getElementById("runBtn");
+  const overlay = document.getElementById("chartLoading");
+  const dash = document.getElementById("dashboard");
+  if (isLoading) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Loading…';
+    if (overlay) overlay.classList.remove("hidden");
+    dash.classList.add("loading");
+  } else {
+    btn.disabled = false;
+    btn.textContent = "Analyze";
+    if (overlay) overlay.classList.add("hidden");
+    dash.classList.remove("loading");
+  }
+}
+function friendlyError(err) {
+  const msg = (err && err.message) ? err.message : String(err);
+  const lower = msg.toLowerCase();
+  if (lower.includes("api key") || lower.includes("apikey") || lower.includes("401") || lower.includes("unauthorized")) {
+    return ["Invalid or missing API key", "Check that your Twelve Data key is correct and still active."];
+  }
+  if (lower.includes("429") || lower.includes("rate") || lower.includes("credit") || lower.includes("limit")) {
+    return ["Rate limit reached", "Twelve Data free plan allows 8 credits/min and 800/day. Wait a minute and try again."];
+  }
+  if (lower.includes("symbol") || lower.includes("not found") || lower.includes("invalid")) {
+    return ["Symbol not found", "Check the ticker spelling. For crypto/forex use formats like BTC/USD or EUR/USD."];
+  }
+  if (lower.includes("network") || lower.includes("failed to fetch") || lower.includes("load")) {
+    return ["Network error", "Could not reach Twelve Data. Check your internet connection and try again."];
+  }
+  return ["Request failed", msg];
+}
+
+function getSymbol() {
+  const custom = document.getElementById("customSymbol").value.trim().toUpperCase();
+  return custom || document.getElementById("symbolSelect").value;
+}
+
+function nearestLevel(price, levels) {
+  let best = null, bestDist = Infinity;
+  for (const [name, val] of Object.entries(levels)) {
+    const d = Math.abs(price - val);
+    if (d < bestDist) { bestDist = d; best = { name, val }; }
+  }
+  return best;
+}
+
+function lineAnno(y, color, label, dash = false) {
+  return {
+    type: 'line',
+    yMin: y, yMax: y,
+    borderColor: color,
+    borderWidth: dash ? 1.2 : 2,
+    borderDash: dash ? [4, 4] : [],
+    label: {
+      display: true,
+      content: label,
+      position: 'end',
+      backgroundColor: color + 'cc',
+      color: '#fff',
+      font: { size: 10, weight: '600' },
+      padding: 3
+    }
+  };
+}
+
+async function runAnalysis() {
+  const symbol = getSymbol();
+  clearError();
+  setLoading(true);
+
+  try {
+    const [tsData, smaData, rsiDData, rsiWData] = await Promise.all([
+      tdFetch("time_series", { symbol, interval: "1day", outputsize: 250, order: "ASC" }),
+      tdFetch("sma", { symbol, interval: "1day", time_period: 200, outputsize: 50, order: "ASC" }),
+      tdFetch("rsi", { symbol, interval: "1day", time_period: 14, outputsize: 50, order: "ASC" }),
+      tdFetch("rsi", { symbol, interval: "1week", time_period: 14, outputsize: 30, order: "ASC" })
+    ]);
+
+    const values = tsData.values;
+    const dates = values.map(v => v.datetime);
+    const closes = values.map(v => +v.close);
+    const highs = values.map(v => +v.high);
+    const lows = values.map(v => +v.low);
+
+    const smaMap = {}, rsiMap = {};
+    smaData.values.forEach(v => smaMap[v.datetime] = +v.sma);
+    rsiDData.values.forEach(v => rsiMap[v.datetime] = +v.rsi);
+    const smaSeries = dates.map(d => smaMap[d] ?? null);
+    const rsiSeries = dates.map(d => rsiMap[d] ?? null);
+    for (let i = 1; i < smaSeries.length; i++) {
+      if (smaSeries[i] == null) smaSeries[i] = smaSeries[i-1];
+      if (rsiSeries[i] == null) rsiSeries[i] = rsiSeries[i-1];
+    }
+
+    const price = closes.at(-1);
+    const sma = smaSeries.at(-1);
+    const rsiD = rsiSeries.at(-1);
+    const rsiW = +rsiWData.values.at(-1).rsi;
+
+    const pdh = highs.at(-2), pdl = lows.at(-2), pdc = closes.at(-2);
+    const pivot = (pdh + pdl + pdc) / 3;
+    const r1 = 2 * pivot - pdl, s1 = 2 * pivot - pdh;
+    const r2 = pivot + (pdh - pdl), s2 = pivot - (pdh - pdl);
+    const liqLevels = { PDH: pdh, PDL: pdl, Pivot: pivot, R1: r1, R2: r2, S1: s1, S2: s2 };
+    const near = nearestLevel(price, liqLevels);
+
+    document.getElementById("pdh").textContent = pdh.toFixed(2);
+    document.getElementById("pdl").textContent = pdl.toFixed(2);
+    document.getElementById("pivot").textContent = pivot.toFixed(2);
+    document.getElementById("r1").textContent = r1.toFixed(2);
+    document.getElementById("r2").textContent = r2.toFixed(2);
+    document.getElementById("s1").textContent = s1.toFixed(2);
+    document.getElementById("s2").textContent = s2.toFixed(2);
+    document.getElementById("nearestLiq").textContent = near ? `${near.name} (${near.val.toFixed(2)})` : "—";
+
+    let bias = "NEUTRAL", biasClass = "bias-neutral";
+    if (price > sma && rsiW < 68) { bias = "LONG preferred"; biasClass = "bias-long"; }
+    else if (price < sma && rsiW > 32) { bias = "SHORT preferred"; biasClass = "bias-short"; }
+
+    document.getElementById("price").textContent = price.toFixed(2);
+    document.getElementById("priceSub").textContent = symbol;
+    document.getElementById("sma").textContent = sma ? sma.toFixed(2) : "—";
+    document.getElementById("sma").style.color = price > sma ? "var(--green)" : "var(--red)";
+    document.getElementById("smaSub").innerHTML = `Price is <strong>${price > sma ? "ABOVE" : "BELOW"}</strong>`;
+    document.getElementById("rsiD").textContent = rsiD ? rsiD.toFixed(1) : "—";
+    document.getElementById("rsiDSub").textContent = rsiD > 70 ? "Overbought" : (rsiD < 30 ? "Oversold" : "Neutral");
+    document.getElementById("rsiW").textContent = rsiW.toFixed(1);
+    const biasEl = document.getElementById("bias");
+    biasEl.textContent = bias; biasEl.className = "bias-pill " + biasClass;
+
+    const pivotsZ = zigzag(highs, lows, closes, dates, 0.025);
+    document.getElementById("pivotBody").innerHTML = pivotsZ.slice(-8).map(p =>
+      `<tr><td>${p.date.slice(0,10)}</td><td style="color:${p.type==='H'?'var(--green)':'var(--red)'};font-weight:600">${p.type}</td><td>${p.price.toFixed(2)}</td></tr>`
+    ).join("");
+
+    let entry="—", stop="—", t1="—", t2="—", rr="—", direction="No clear setup", aiText="";
+    let entryLo=null, entryHi=null, stopVal=null, t1Val=null, t2Val=null;
+    let notes = [];
+
+    if (pivotsZ.length >= 2) {
+      const last = pivotsZ.at(-1), prev = pivotsZ.at(-2);
+      const start = prev.price, end = last.price, diff = end - start;
+      const levels = {
+        "0.0": end, "0.236": end-0.236*diff, "0.382": end-0.382*diff,
+        "0.5": end-0.5*diff, "0.618": end-0.618*diff, "0.786": end-0.786*diff, "1.0": start
+      };
+      document.getElementById("fibBody").innerHTML = Object.entries(levels).map(([lvl,val]) => {
+        const nearFib = Math.abs(val-price)/price < 0.01;
+        return `<tr style="${nearFib?'background:#1f6feb33':''}"><td>${lvl}</td><td>${val.toFixed(2)}</td><td>${nearFib?'← near':''}</td></tr>`;
+      }).join("");
+
+      notes.push(`Last swing: <strong>${last.type}</strong> @ ${last.price.toFixed(2)}`);
+      notes.push(`Nearest liquidity: <strong>${near ? near.name + " @ " + near.val.toFixed(2) : "n/a"}</strong>`);
+
+      const isUp = last.type === "H";
+      const fib382 = levels["0.382"], fib50 = levels["0.5"], fib786 = levels["0.786"];
+
+      if (bias === "LONG preferred" && isUp) {
+        direction = "LONG — Pullback into value";
+        entryLo = Math.min(fib382, fib50); entryHi = Math.max(fib382, fib50);
+        entry = `${entryLo.toFixed(2)} – ${entryHi.toFixed(2)}`;
+        stopVal = Math.min(fib786, pdl) * 0.997;
+        stop = stopVal.toFixed(2);
+        t1Val = Math.max(end, pdh, r1);
+        t1 = t1Val.toFixed(2);
+        t2Val = end + diff * 0.618;
+        t2 = t2Val.toFixed(2);
+        const risk = entryHi - stopVal, reward = t1Val - entryHi;
+        rr = risk > 0 ? (reward/risk).toFixed(1)+" : 1" : "—";
+        aiText = `Long bias. Look for pullback into ${entry}. Stop beyond liquidity (~${stop}). T1 confluence ~${t1}, extension ~${t2}. Require support evidence in entry zone.`;
+      }
+      else if (bias === "SHORT preferred" && !isUp) {
+        direction = "SHORT — Bounce into value";
+        entryLo = Math.min(fib382, fib50); entryHi = Math.max(fib382, fib50);
+        entry = `${entryLo.toFixed(2)} – ${entryHi.toFixed(2)}`;
+        stopVal = Math.max(fib786, pdh) * 1.003;
+        stop = stopVal.toFixed(2);
+        t1Val = Math.min(end, pdl, s1);
+        t1 = t1Val.toFixed(2);
+        t2Val = end - Math.abs(diff) * 0.618;
+        t2 = t2Val.toFixed(2);
+        const risk = stopVal - entryLo, reward = entryLo - t1Val;
+        rr = risk > 0 ? (reward/risk).toFixed(1)+" : 1" : "—";
+        aiText = `Short bias. Look for bounce into ${entry}. Stop beyond liquidity (~${stop}). T1 ~${t1}, extension ~${t2}. Require rejection in entry zone.`;
+      }
+      else if (bias === "LONG preferred") {
+        direction = "LONG bias — watch corrective low";
+        entryLo = last.price * 0.995; entryHi = last.price * 1.005;
+        entry = `Near ${last.price.toFixed(2)}`;
+        stopVal = Math.min(last.price, pdl) * 0.985;
+        stop = stopVal.toFixed(2);
+        t1Val = Math.max(prev.price, pivot, r1);
+        t1 = t1Val.toFixed(2);
+        t2Val = t1Val + Math.abs(prev.price - last.price) * 0.5;
+        t2 = t2Val.toFixed(2);
+        aiText = `Above SMA200 but last swing is a low. Watch for higher-low or reclaim of Pivot. Invalidation below recent liquidity.`;
+      }
+      else if (bias === "SHORT preferred") {
+        direction = "SHORT bias — watch corrective high";
+        entryLo = last.price * 0.995; entryHi = last.price * 1.005;
+        entry = `Near ${last.price.toFixed(2)}`;
+        stopVal = Math.max(last.price, pdh) * 1.015;
+        stop = stopVal.toFixed(2);
+        t1Val = Math.min(prev.price, pivot, s1);
+        t1 = t1Val.toFixed(2);
+        t2Val = t1Val - Math.abs(last.price - prev.price) * 0.5;
+        t2 = t2Val.toFixed(2);
+        aiText = `Below SMA200 but last swing is a high. Watch for lower-high or rejection at Pivot/PDH.`;
+      }
+      else {
+        aiText = `No strong alignment. Price near ${near ? near.name : "key levels"}. Wait for clearer structure.`;
+      }
+    } else {
+      document.getElementById("fibBody").innerHTML = "<tr><td colspan='3'>Not enough swings</td></tr>";
+      aiText = "Insufficient swing data.";
+    }
+
+    document.getElementById("tradeDirection").textContent = direction;
+    document.getElementById("entryZone").textContent = entry;
+    document.getElementById("stopLevel").textContent = stop;
+    document.getElementById("target1").textContent = t1;
+    document.getElementById("target2").textContent = t2;
+    document.getElementById("rrRatio").textContent = rr;
+    document.getElementById("aiIdea").textContent = aiText;
+    document.getElementById("notesList").innerHTML = notes.map(n => `<li>${n}</li>`).join("") || "<li>—</li>";
+
+    const symClean = symbol.replace("/","");
+    document.getElementById("newsLinks").innerHTML = `
+      <a href="https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}/news" target="_blank" rel="noopener">Yahoo News</a>
+      <a href="https://www.google.com/search?q=${encodeURIComponent(symbol+' stock news')}&tbm=nws" target="_blank" rel="noopener">Google News</a>
+      <a href="https://www.tradingview.com/symbols/${encodeURIComponent(symClean)}/ideas/" target="_blank" rel="noopener">TradingView Ideas</a>
+      <a href="https://twitter.com/search?q=%24${encodeURIComponent(symClean)}%20(swing%20OR%20%22technical%20analysis%22)&src=typed_query&f=live" target="_blank" rel="noopener">X Live</a>
+      <a href="https://finviz.com/quote.ashx?t=${encodeURIComponent(symClean)}" target="_blank" rel="noopener">Finviz</a>
+      <a href="https://pipatlas.com/" target="_blank" rel="noopener">Econ Calendar</a>`;
+    document.getElementById("xQuery").textContent = "$" + symClean + " swing OR technical";
+
+    // ===== CHART WITH ANNOTATIONS =====
+    const slice = 120;
+    const cDates = dates.slice(-slice);
+    const cClose = closes.slice(-slice);
+    const cSma = smaSeries.slice(-slice);
+    const cRsi = rsiSeries.slice(-slice);
+
+    const annotations = {};
+    // Liquidity (dashed, muted)
+    annotations.pdh = lineAnno(pdh, '#8b949e', 'PDH', true);
+    annotations.pdl = lineAnno(pdl, '#8b949e', 'PDL', true);
+    annotations.pivot = lineAnno(pivot, '#8b949e', 'Pivot', true);
+
+    // Trade levels (solid, colored)
+    if (entryLo != null && entryHi != null) {
+      annotations.entryLo = lineAnno(entryLo, '#58a6ff', 'Entry L');
+      annotations.entryHi = lineAnno(entryHi, '#58a6ff', 'Entry H');
+    }
+    if (stopVal != null) annotations.stop = lineAnno(stopVal, '#f85149', 'Stop');
+    if (t1Val != null) annotations.t1 = lineAnno(t1Val, '#3fb950', 'T1');
+    if (t2Val != null) annotations.t2 = lineAnno(t2Val, '#3fb950', 'T2');
+
+    // Buy / Sell arrow near the latest price
+    const isLong = direction.toUpperCase().includes("LONG");
+    const isShort = direction.toUpperCase().includes("SHORT");
+    if (isLong || isShort) {
+      const arrowY = isLong ? (entryHi != null ? entryHi : price) : (entryLo != null ? entryLo : price);
+      const arrowColor = isLong ? '#3fb950' : '#f85149';
+      const arrowLabel = isLong ? '▲ BUY' : '▼ SELL';
+      annotations.signalArrow = {
+        type: 'label',
+        xValue: cDates[cDates.length - 1],
+        yValue: arrowY,
+        content: [arrowLabel],
+        backgroundColor: arrowColor,
+        color: '#ffffff',
+        font: { size: 13, weight: 'bold' },
+        padding: { top: 6, bottom: 6, left: 10, right: 10 },
+        borderRadius: 6,
+        position: 'center',
+        yAdjust: isLong ? -28 : 28
+      };
+    }
+
+    if (chart) chart.destroy();
+    chart = new Chart(document.getElementById("mainChart").getContext("2d"), {
+      type: "line",
+      data: {
+        labels: cDates,
+        datasets: [
+          { label: "Close", data: cClose, borderColor: "#58a6ff", borderWidth: 2, pointRadius: 0, yAxisID: "y" },
+          { label: "SMA 200", data: cSma, borderColor: "#f0883e", borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, yAxisID: "y" },
+          { label: "RSI", data: cRsi, borderColor: "#a371f7", borderWidth: 1.5, pointRadius: 0, yAxisID: "y1" }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { labels: { color: "#8b949e" } },
+          title: { display: true, text: symbol + " — Price + Idea Levels", color: "#e6edf3", font: { size: 13 } },
+          annotation: { annotations }
+        },
+        scales: {
+          x: { ticks: { color: "#8b949e", maxTicksLimit: 9 }, grid: { color: "#21262d" } },
+          y: { position: "left", ticks: { color: "#8b949e" }, grid: { color: "#21262d" } },
+          y1: { position: "right", min: 0, max: 100, ticks: { color: "#a371f7" }, grid: { drawOnChartArea: false } }
+        }
+      }
+    });
+
+    document.getElementById("timestamp").innerHTML = '<span class="status-ok">Updated: ' + new Date().toISOString().slice(0,16).replace("T"," ") + " UTC  ·  " + symbol + "</span>";
+    document.getElementById("dashboard").classList.remove("loading");
+
+  } catch (err) {
+    console.error(err);
+    const [title, detail] = friendlyError(err);
+    showError(title, detail);
+    document.getElementById("timestamp").innerHTML = '<span class="status-err">Error — see message above</span>';
+  } finally {
+    setLoading(false);
+  }
+}
+
+if (savedKey) setTimeout(() => runAnalysis(), 500);
+</script>
+</body>
+</html>
